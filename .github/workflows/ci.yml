@@ -45,6 +45,9 @@ jobs:
           done
           exit "$fail"
 
+      - name: Config validation tests
+        run: bash tests/config_validation.sh
+
       - name: Check upstream endpoints are alive
         continue-on-error: true
         run: |

@@ -199,6 +199,12 @@ validate() {
 		*) _err "unknown KSU_VARIANT '${CFG[KSU_VARIANT]}'" ;;
 	esac
 
+	if [ "${CFG[KSU_VARIANT]}" = "sukisu-ultra" ] &&
+	   [ "${CFG[KSU_REF]}" = "builtin" ] &&
+	   ! is_true "${CFG[ENABLE_SUSFS]}"; then
+		_err "KSU_VARIANT=sukisu-ultra with KSU_REF=builtin requires ENABLE_SUSFS=true"
+	fi
+
 	case "${CFG[KSU_HOOK_MODE]}" in
 		auto | kprobes | manual | tracepoint | syscall | none) ;;
 		*) _err "unknown KSU_HOOK_MODE '${CFG[KSU_HOOK_MODE]}'" ;;
