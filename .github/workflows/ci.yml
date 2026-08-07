@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    paths: ['scripts/**', 'patches/**', '.github/workflows/**', 'config.env', 'config/**']
+    paths: ['scripts/**', 'patches/**', 'tests/**', '.github/workflows/**', 'config.env', 'config/**']
   pull_request:
-    paths: ['scripts/**', 'patches/**', '.github/workflows/**', 'config.env', 'config/**']
+    paths: ['scripts/**', 'patches/**', 'tests/**', '.github/workflows/**', 'config.env', 'config/**']
   workflow_dispatch:
 
 permissions:
@@ -47,7 +47,7 @@ jobs:
 
       - name: Script regression tests
         run: |
-          for t in tests/*.sh; do
+          for t in tests/*_test.sh; do
             bash "$t"
           done
 
