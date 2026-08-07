@@ -18,8 +18,45 @@ DEFCONFIG_PATH="${KERNEL_DIR}/arch/${ARCH}/configs/${KERNEL_CONFIG}"
 
 # ------------------------------------------------------------- defconfig ---
 
+prepare_fragment_defconfig() {
+	[ -n "${KERNEL_CONFIG_FRAGMENTS:-}" ] || return 0
+
+	[ -f "$DEFCONFIG_PATH" ] \
+		|| die "base defconfig not found: arch/${ARCH}/configs/${KERNEL_CONFIG}"
+
+	local device_name=${DEVICE:-}
+	[ -n "$device_name" ] || device_name=$(printf '%s' "$KERNEL_CONFIG" | sed 's!.*/!!; s/_defconfig$//')
+
+	local generated_rel="vendor/${device_name}_defconfig"
+	local generated_path="${KERNEL_DIR}/arch/${ARCH}/configs/${generated_rel}"
+	mkdir -p "$(dirname "$generated_path")"
+
+	local -a fragments=()
+	local frag path
+	for frag in ${KERNEL_CONFIG_FRAGMENTS}; do
+		case "$frag" in
+			/*) path=$frag ;;
+			*)  path="${KERNEL_DIR}/arch/${ARCH}/configs/${frag}" ;;
+		esac
+		[ -f "$path" ] || die "config fragment not found: ${frag}"
+		fragments+=("$path")
+	done
+
+	info "merging config fragments into arch/${ARCH}/configs/${generated_rel}: ${KERNEL_CONFIG_FRAGMENTS}"
+	(
+		cd "$KERNEL_DIR"
+		KCONFIG_CONFIG="$generated_path" scripts/kconfig/merge_config.sh -m "$DEFCONFIG_PATH" "${fragments[@]}"
+	) || die "failed to merge config fragments"
+
+	KERNEL_CONFIG=$generated_rel
+	DEFCONFIG_PATH=$generated_path
+	export KERNEL_CONFIG
+}
+
 prepare_defconfig() {
 	group "Preparing defconfig"
+	prepare_fragment_defconfig
+
 	[ -f "$DEFCONFIG_PATH" ] \
 		|| die "defconfig not found: arch/${ARCH}/configs/${KERNEL_CONFIG}
        Available: $(ls "${KERNEL_DIR}/arch/${ARCH}/configs/" | head -20 | tr '\n' ' ')"
