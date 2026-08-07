@@ -39,9 +39,54 @@ susfs_branch_for() {
 	esac
 }
 
+susfs_checkout_ref() {
+	local repo_dir=$1 ref=$2 resolved
+	[ -n "$ref" ] || return 0
+	git -C "$repo_dir" fetch -q --depth=1 origin "$ref" >/dev/null 2>&1 || return 1
+	git -C "$repo_dir" checkout -q --detach "$ref" >/dev/null 2>&1 || return 1
+	resolved=$(git -C "$repo_dir" rev-parse HEAD) || return 1
+	[ "$resolved" = "$ref" ]
+}
+
+susfs_kernel_patch_for() {
+	local kp=$1 branch=$2 custom=${SUSFS_KERNEL_PATCH:-} candidate repo_root
+
+	if [ -n "$custom" ]; then
+		case "$custom" in
+			/*) return 1 ;;
+		esac
+		candidate="${REPO_ROOT}/${custom}"
+		[ -f "$candidate" ] || return 1
+		repo_root=$(realpath -e -- "$REPO_ROOT") || return 1
+		candidate=$(realpath -e -- "$candidate") || return 1
+		case "$candidate" in
+			"${repo_root}"/*) ;;
+			*) return 1 ;;
+		esac
+		printf '%s\n' "$candidate"
+		return 0
+	fi
+
+	candidate="${kp}/50_add_susfs_in_${branch}.patch"
+	if [ ! -f "$candidate" ]; then
+		candidate=$(find "$kp" -maxdepth 1 -name '50_add_susfs_in_*.patch' | head -n1)
+	fi
+	[ -f "$candidate" ] || return 1
+	printf '%s\n' "$candidate"
+}
+
+susfs_apply_strict() {
+	local patch_file=$1 strip=${2:-1}
+	patch -p"$strip" --dry-run --force --fuzz=0 --silent <"$patch_file" \
+		>/dev/null 2>&1 || return 1
+	patch -p"$strip" --force --fuzz=0 --no-backup-if-mismatch <"$patch_file" \
+		>/dev/null
+}
+
 susfs_apply() {
 	local repo=${SUSFS_REPO:-https://gitlab.com/simonpunk/susfs4ksu.git}
 	local branch=${SUSFS_BRANCH:-auto}
+	local ref=${SUSFS_REF:-}
 	local kver
 	kver=$(kernel_version "$KERNEL_DIR") || die "cannot read kernel version from ${KERNEL_DIR}/Makefile"
 
@@ -62,6 +107,10 @@ susfs_apply() {
 	rm -rf "$susfs_dir"
 	retry 3 git clone -q --depth=1 -b "$branch" "$repo" "$susfs_dir" \
 		|| die "failed to clone ${repo} @ ${branch}"
+	if [ -n "$ref" ]; then
+		susfs_checkout_ref "$susfs_dir" "$ref" \
+			|| die "failed to resolve SUSFS commit '${ref}' in ${repo}"
+	fi
 
 	local kp="${susfs_dir}/kernel_patches"
 	[ -d "$kp" ] || die "unexpected susfs4ksu layout: ${kp} missing"
@@ -72,18 +121,21 @@ susfs_apply() {
 	cp -v "${kp}/include/linux/"*.h   "${KERNEL_DIR}/include/linux/" 2>/dev/null || true
 
 	# 2. Patch the kernel itself.
-	local kernel_patch="${kp}/50_add_susfs_in_${branch}.patch"
-	[ -f "$kernel_patch" ] || {
-		# Fall back to whatever 50_* patch the branch actually ships.
-		kernel_patch=$(find "$kp" -maxdepth 1 -name '50_add_susfs_in_*.patch' | head -n1)
-	}
-	[ -n "$kernel_patch" ] && [ -f "$kernel_patch" ] \
-		|| die "no 50_add_susfs_in_*.patch found in ${kp}"
-
-	( cd "$KERNEL_DIR" && apply_patch "$kernel_patch" 1 ) \
-		|| die "the SUSFS kernel patch did not apply cleanly.
+	local kernel_patch
+	kernel_patch=$(susfs_kernel_patch_for "$kp" "$branch") \
+		|| die "no usable SUSFS kernel patch was found"
+	if [ -n "${SUSFS_KERNEL_PATCH:-}" ]; then
+		( cd "$KERNEL_DIR" && susfs_apply_strict "$kernel_patch" 1 ) \
+			|| die "the custom SUSFS kernel patch did not apply cleanly"
+		if find "$KERNEL_DIR" -name '*.rej' -print -quit | grep -q .; then
+			die "the custom SUSFS kernel patch produced reject files"
+		fi
+	else
+		( cd "$KERNEL_DIR" && apply_patch "$kernel_patch" 1 ) \
+			|| die "the SUSFS kernel patch did not apply cleanly.
        This usually means SUSFS_BRANCH does not match your kernel. Detected
        kernel ${kver}, used branch '${branch}'."
+	fi
 
 	# 3. Patch the KernelSU side -- but only when the variant does not already
 	#    ship SUSFS support. SukiSU-Ultra's 'builtin' branch, for instance,
@@ -108,14 +160,18 @@ susfs_apply() {
 		}
 	fi
 
-	# Record the SUSFS version for the build summary.
-	local sv
+	# Record the SUSFS version and exact inputs for the build summary.
+	local sv resolved_ref
 	sv=$(sed -nE 's/.*SUSFS_VERSION[[:space:]]+"([^"]+)".*/\1/p' \
 		"${KERNEL_DIR}/include/linux/susfs.h" 2>/dev/null | head -n1)
+	resolved_ref=$(git -C "$susfs_dir" rev-parse HEAD) \
+		|| die "cannot resolve the checked-out SUSFS commit"
 	export_env SUSFS_VERSION "${sv:-unknown}"
 	export_env SUSFS_BRANCH_RESOLVED "$branch"
-	ok "SUSFS ${sv:-?} applied from branch ${branch}"
-	summary "| SUSFS | \`${sv:-unknown}\` (branch \`${branch}\`) |"
+	export_env SUSFS_REF_RESOLVED "$resolved_ref"
+	export_env SUSFS_PATCH_RESOLVED "$kernel_patch"
+	ok "SUSFS ${sv:-?} applied from branch ${branch} @ ${resolved_ref}"
+	summary "| SUSFS | \`${sv:-unknown}\` (branch \`${branch}\`, commit \`${resolved_ref}\`) |"
 	endgroup
 }
 

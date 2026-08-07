@@ -38,12 +38,12 @@ susfs_patch=$(config_value SUSFS_KERNEL_PATCH)
 [ "$ksu_ref" = "builtin" ] \
 	|| fail "haydn SUSFS build does not use the builtin ref"
 [ "$enable_susfs" = "true" ] || fail "haydn SUSFS is not enabled"
-[ "$susfs_branch" = "kernel-5.4" ] \
-	|| fail "haydn SUSFS branch is not pinned to kernel-5.4"
-[ "$susfs_ref" = "76affd70abf61d77feb0a132f61365d6848505df" ] \
-	|| fail "haydn SUSFS commit is not pinned"
-[ "$susfs_patch" = "patches/haydn-susfs-5.4.patch" ] \
-	|| fail "haydn custom SUSFS patch is not selected"
+[ "$susfs_branch" = "gki-android12-5.10" ] \
+	|| fail "haydn SUSFS branch is not pinned to the v2.2.0 source"
+[ "$susfs_ref" = "ee7dc7a03b7c836952cce55c5f3834de62a465d1" ] \
+	|| fail "haydn SUSFS v2.2.0 commit is not pinned"
+[ "$susfs_patch" = "patches/haydn-susfs-v2.2.0-5.4.patch" ] \
+	|| fail "haydn SUSFS v2.2.0 patch is not selected"
 
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
