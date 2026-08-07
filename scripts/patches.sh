@@ -277,6 +277,28 @@ EOF
 
 # ============================================================== extra patches
 
+vendor_source_fixes_apply() {
+	group "Applying vendor source fixes"
+
+	local fixed=0
+	local minidump="${KERNEL_DIR}/drivers/soc/qcom/msm_minidump.c"
+
+	# Xiaomi haydn-r-oss enables QCOM_MINIDUMP, but the published source misses
+	# the semicolon after this initcall and fails with clang at line 599.
+	if [ -f "$minidump" ] &&
+	   grep -qE '^subsys_initcall\(msm_minidump_init\)[[:space:]]*$' "$minidump"; then
+		sed -i -E 's/^(subsys_initcall\(msm_minidump_init\))[[:space:]]*$/\1;/' "$minidump"
+		ok "fixed missing semicolon in drivers/soc/qcom/msm_minidump.c"
+		fixed=1
+	fi
+
+	if [ "$fixed" -eq 0 ]; then
+		info "no known vendor source fixes needed"
+	fi
+
+	endgroup
+}
+
 SUKISU_PATCH_REPO=${SUKISU_PATCH_REPO:-https://github.com/ShirkNeko/SukiSU_patch.git}
 
 # Clone the shared patch/tool repo once, on demand.
@@ -371,6 +393,8 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
 		hooks)        hooks_patch_apply ;;
 		kpm)          kpm_patch_image "$2" ;;
 		all)
+			vendor_source_fixes_apply
+
 			# Order matters and this is the tested one (4.19 + SukiSU builtin
 			# + SUSFS 1.5.5, no rejects):
 			#   path_umount and the hook patches both key off textual anchors

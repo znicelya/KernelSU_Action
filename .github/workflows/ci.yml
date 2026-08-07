@@ -45,8 +45,11 @@ jobs:
           done
           exit "$fail"
 
-      - name: Config validation tests
-        run: bash tests/config_validation.sh
+      - name: Script regression tests
+        run: |
+          for t in tests/*.sh; do
+            bash "$t"
+          done
 
       - name: Check upstream endpoints are alive
         continue-on-error: true
