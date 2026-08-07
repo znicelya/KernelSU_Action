@@ -19,7 +19,7 @@ DEFCONFIG_PATH="${KERNEL_DIR}/arch/${ARCH}/configs/${KERNEL_CONFIG}"
 # ------------------------------------------------------------- defconfig ---
 
 prepare_fragment_defconfig() {
-	[ -n "${KERNEL_CONFIG_FRAGMENTS:-}" ] || return 0
+	[ -n "${KERNEL_CONFIG_ALLYES_FRAGMENTS:-}${KERNEL_CONFIG_FRAGMENTS:-}" ] || return 0
 
 	[ -f "$DEFCONFIG_PATH" ] \
 		|| die "base defconfig not found: arch/${ARCH}/configs/${KERNEL_CONFIG}"
@@ -32,8 +32,23 @@ prepare_fragment_defconfig() {
 	mkdir -p "$(dirname "$generated_path")"
 
 	local -a fragments=()
-	local frag path
-	for frag in ${KERNEL_CONFIG_FRAGMENTS}; do
+	local frag path allyes_path
+	for frag in ${KERNEL_CONFIG_ALLYES_FRAGMENTS:-}; do
+		case "$frag" in
+			/*) path=$frag ;;
+			*)  path="${KERNEL_DIR}/arch/${ARCH}/configs/${frag}" ;;
+		esac
+		[ -f "$path" ] || die "config fragment not found: ${frag}"
+
+		case "$path" in
+			*.config) allyes_path="${path%.config}_allyes.config" ;;
+			*) allyes_path="${path}_allyes.config" ;;
+		esac
+		sed 's/=m$/=y/g' "$path" >"$allyes_path"
+		fragments+=("$allyes_path")
+	done
+
+	for frag in ${KERNEL_CONFIG_FRAGMENTS:-}; do
 		case "$frag" in
 			/*) path=$frag ;;
 			*)  path="${KERNEL_DIR}/arch/${ARCH}/configs/${frag}" ;;
@@ -42,7 +57,11 @@ prepare_fragment_defconfig() {
 		fragments+=("$path")
 	done
 
-	info "merging config fragments into arch/${ARCH}/configs/${generated_rel}: ${KERNEL_CONFIG_FRAGMENTS}"
+	info "merging config fragments into arch/${ARCH}/configs/${generated_rel}"
+	[ -z "${KERNEL_CONFIG_ALLYES_FRAGMENTS:-}" ] \
+		|| info "all-yes fragments: ${KERNEL_CONFIG_ALLYES_FRAGMENTS}"
+	[ -z "${KERNEL_CONFIG_FRAGMENTS:-}" ] \
+		|| info "regular fragments: ${KERNEL_CONFIG_FRAGMENTS}"
 	(
 		cd "$KERNEL_DIR"
 		KCONFIG_CONFIG="$generated_path" scripts/kconfig/merge_config.sh -m "$DEFCONFIG_PATH" "${fragments[@]}"

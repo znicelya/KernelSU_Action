@@ -28,17 +28,18 @@ export WORKSPACE="$tmpdir"
 
 vendor_source_fixes_apply
 
-grep -Fxq '#include <linux/module.h>' \
+grep -Fxq 'subsys_initcall(msm_minidump_init);' \
 	"${tmpdir}/drivers/soc/qcom/msm_minidump.c" \
-	|| fail "msm_minidump module header was not added"
+	|| fail "msm_minidump initcall semicolon was not fixed"
 
-grep -Fxq 'module_init(msm_minidump_init);' \
-	"${tmpdir}/drivers/soc/qcom/msm_minidump.c" \
-	|| fail "msm_minidump initcall was not made module-compatible"
-
-if grep -Fq 'subsys_initcall(msm_minidump_init)' \
+if grep -Fq 'module_init(msm_minidump_init)' \
 	"${tmpdir}/drivers/soc/qcom/msm_minidump.c"; then
-	fail "msm_minidump still uses built-in-only subsys_initcall"
+	fail "built-in msm_minidump was changed to module_init"
+fi
+
+if grep -Fq '#include <linux/module.h>' \
+	"${tmpdir}/drivers/soc/qcom/msm_minidump.c"; then
+	fail "built-in msm_minidump gained an unnecessary module header"
 fi
 
 printf 'vendor source fix tests passed\n'

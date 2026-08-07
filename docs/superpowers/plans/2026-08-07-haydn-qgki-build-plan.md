@@ -28,7 +28,7 @@
 - Consumes: `KERNEL_CONFIG_ALLYES_FRAGMENTS`, `KERNEL_CONFIG_FRAGMENTS`, and `prepare_fragment_defconfig`.
 - Produces: A test that fails until all-yes fragments are generated and inserted before ordinary fragments.
 
-- [ ] **Step 1: Write the failing fixture test**
+- [x] **Step 1: Write the failing fixture test**
 
 Create a temporary arm64 kernel tree containing `gki_defconfig`, a GKI fragment
 with `CONFIG_GKI_PROVIDER=m`, a QGKI fragment with `CONFIG_QGKI=y`, and a fake
@@ -38,7 +38,7 @@ merge script that concatenates its input fragments into `KCONFIG_CONFIG`. Set
 `prepare_fragment_defconfig`, and assert the generated defconfig contains
 `CONFIG_GKI_PROVIDER=y` and `CONFIG_QGKI=y`.
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run:
 
@@ -63,13 +63,13 @@ fragment.
 - Produces: Generated `<fragment-basename>_allyes.config` files and a merged
   device defconfig.
 
-- [ ] **Step 1: Add the configuration default**
+- [x] **Step 1: Add the configuration default**
 
 Add `[KERNEL_CONFIG_ALLYES_FRAGMENTS]=""` next to
 `[KERNEL_CONFIG_FRAGMENTS]` so config resolution exports the field and the
 workflow can override it consistently.
 
-- [ ] **Step 2: Generate and merge converted fragments**
+- [x] **Step 2: Generate and merge converted fragments**
 
 Update `prepare_fragment_defconfig` to:
 
@@ -82,7 +82,7 @@ Update `prepare_fragment_defconfig` to:
    paths, and ordinary fragment paths in that order.
 5. Report both fragment lists in the log.
 
-- [ ] **Step 3: Run the focused test**
+- [x] **Step 3: Run the focused test**
 
 Run `bash tests/config_fragments.sh` and expect PASS.
 
@@ -97,29 +97,37 @@ Run `bash tests/config_fragments.sh` and expect PASS.
 - Produces: A haydn profile with GKI all-yes conversion, QGKI overlay, and no
   fragile provider-symbol allowlist.
 
-- [ ] **Step 1: Write the failing profile assertion**
+- [x] **Step 1: Write the failing profile assertion**
 
 Change the profile test to assert that the resolved configuration contains
 `KERNEL_CONFIG_ALLYES_FRAGMENTS=vendor/haydn_GKI.config`,
 `KERNEL_CONFIG_FRAGMENTS=vendor/haydn_QGKI.config`, and no Qualcomm provider
 entries in `EXTRA_DEFCONFIG`.
 
-- [ ] **Step 2: Run the profile test to verify it fails**
+- [x] **Step 2: Run the profile test to verify it fails**
 
 Run `bash tests/haydn_builtin_providers.sh`.
 
 Expected: FAIL against the current profile because it still lists raw GKI and
 the manually maintained built-in provider block.
 
-- [ ] **Step 3: Update the profile**
+- [x] **Step 3: Update the profile**
 
 Set the two fragment fields as specified, retain only the generic TMPFS
 entries in `EXTRA_DEFCONFIG`, and keep the existing haydn KernelSU/SUSFS
 choices unchanged.
 
-- [ ] **Step 4: Run the profile test**
+- [x] **Step 4: Run the profile test**
 
 Run `bash tests/haydn_builtin_providers.sh` and expect PASS.
+
+- [x] **Step 5: Restore the built-in minidump initcall fix**
+
+Change `tests/vendor_source_fixes.sh` to require
+`subsys_initcall(msm_minidump_init);` without `linux/module.h`, verify the
+test fails against the old module workaround, then change
+`vendor_source_fixes_apply` to add only the missing semicolon. Run the test
+again and expect PASS.
 
 ### Task 4: Make official KernelSU manual hooks self-consistent
 
@@ -132,27 +140,29 @@ Run `bash tests/haydn_builtin_providers.sh` and expect PASS.
 - Produces: `CONFIG_KPROBES=n` for official `kernelsu` manual mode; existing
   Kprobes mode behavior remains enabled.
 
-- [ ] **Step 1: Write the failing hook configuration test**
+- [x] **Step 1: Write the failing hook configuration test**
 
 Create a temporary defconfig containing `CONFIG_KPROBES=y`, source
 `scripts/kernelsu.sh`, call `ksu_hook_configs kernelsu manual <file> 5.4`, and
-assert `kconf_get` returns `n`. In the same test, use a second defconfig and
-call `ksu_hook_configs kernelsu kprobes <file> 5.4`, asserting Kprobes is `y`.
+assert the file contains `# CONFIG_KPROBES is not set` and
+`# CONFIG_KPROBE_EVENTS is not set`. In the same test, use a second defconfig
+and call `ksu_hook_configs kernelsu kprobes <file> 5.4`, asserting Kprobes is
+`y`.
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run `bash tests/kernelsu_hook_config.sh`.
 
 Expected: FAIL because the current official KernelSU manual branch is a no-op
 and leaves `CONFIG_KPROBES=y`.
 
-- [ ] **Step 3: Implement the minimal manual-mode change**
+- [x] **Step 3: Implement the minimal manual-mode change**
 
 In the official `kernelsu` manual branch, call `kconf_disable` for
 `CONFIG_KPROBES` and `CONFIG_KPROBE_EVENTS`; leave all other variant branches
 unchanged.
 
-- [ ] **Step 4: Run the focused hook test**
+- [x] **Step 4: Run the focused hook test**
 
 Run `bash tests/kernelsu_hook_config.sh` and expect PASS.
 
@@ -166,7 +176,7 @@ Run `bash tests/kernelsu_hook_config.sh` and expect PASS.
 - Consumes: Tasks 1-4.
 - Produces: A tested commit pushed to the `haydn` branch.
 
-- [ ] **Step 1: Run targeted and syntax tests**
+- [x] **Step 1: Run targeted and syntax tests**
 
 Run:
 
@@ -180,7 +190,7 @@ bash -n scripts/config.sh scripts/build.sh scripts/patches.sh scripts/kernelsu.s
 git diff --check
 ```
 
-- [ ] **Step 2: Review the diff**
+- [x] **Step 2: Review the diff**
 
 Confirm only the fragment pipeline, KernelSU manual hook configuration, haydn
 profile/tests, and required design/plan documentation changed.

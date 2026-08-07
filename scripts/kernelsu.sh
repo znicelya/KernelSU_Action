@@ -237,10 +237,17 @@ ksu_hook_configs() {
 		kconf_enable "$defconfig" CONFIG_HAVE_KPROBES
 		kconf_enable "$defconfig" CONFIG_KPROBE_EVENTS
 		kconf_enable "$defconfig" CONFIG_KRETPROBES
-		[ "$variant" = "kernelsu-next" ] && kconf_enable "$defconfig" CONFIG_KSU_KPROBES_HOOK
+		if [ "$variant" = "kernelsu-next" ]; then
+			kconf_enable "$defconfig" CONFIG_KSU_KPROBES_HOOK
+		fi
 		;;
 	manual)
 		case "$variant" in
+			kernelsu)
+				# KernelSU 0.9.x only defines the legacy direct-hook state
+				# variables when its Kprobes implementation is not compiled.
+				kconf_set_many "$defconfig" \
+					CONFIG_KPROBES=n CONFIG_KPROBE_EVENTS=n ;;
 			kernelsu-next)  kconf_enable "$defconfig" CONFIG_KSU_MANUAL_HOOK ;;
 			sukisu-ultra)
 				kconf_enable "$defconfig" CONFIG_KSU_MANUAL_HOOK ;;
@@ -251,7 +258,7 @@ ksu_hook_configs() {
 				kconf_set_many "$defconfig" \
 					CONFIG_KSU_MANUAL_HOOK=y CONFIG_DEBUG_KERNEL=y \
 					CONFIG_KALLSYMS=y CONFIG_KALLSYMS_ALL=y ;;
-			*) : ;;  # tiann/KernelSU 0.9.x infers manual hooks from the source patch
+			*) : ;;
 		esac
 		;;
 	tracepoint)

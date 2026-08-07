@@ -38,6 +38,11 @@ Remove the profile's manually maintained Qualcomm provider list. The official
 GKI conversion supplies the complete built-in provider set and avoids another
 round of symbol-by-symbol link fixes.
 
+The all-yes conversion also keeps `QCOM_MINIDUMP` built in by making its
+`QCOM_SMEM` and `POWER_RESET_MSM` dependencies built in. The existing
+vendor source fix must therefore preserve `subsys_initcall` and only add the
+semicolon missing from Xiaomi's source.
+
 For the official `kernelsu` variant in `manual` mode, disable
 `CONFIG_KPROBES` in `ksu_hook_configs`. Other variants and explicit Kprobes
 mode retain their existing behavior.
@@ -59,5 +64,7 @@ mode retain their existing behavior.
   it.
 - A KernelSU hook test must prove that official `kernelsu` manual mode writes
   `CONFIG_KPROBES` as disabled while Kprobes mode still enables it.
+- The vendor source test must prove that the minidump fix preserves the
+  built-in `subsys_initcall` level.
 - Existing configuration, vendor-source, shell syntax, and profile tests must
   remain green.

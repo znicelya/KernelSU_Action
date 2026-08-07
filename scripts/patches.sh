@@ -283,17 +283,12 @@ vendor_source_fixes_apply() {
 	local fixed=0
 	local minidump="${KERNEL_DIR}/drivers/soc/qcom/msm_minidump.c"
 
-	# Xiaomi haydn-r-oss requests QCOM_MINIDUMP=y, but its QCOM_SMEM and
-	# POWER_RESET_MSM dependencies are modules, so Kconfig coerces minidump to
-	# a module. subsys_initcall() is only defined for built-in code in this
-	# tree; use module_init(), which works for both modules and built-ins.
+	# Xiaomi haydn-r-oss enables QCOM_MINIDUMP, but the published source misses
+	# the semicolon after this initcall and fails with clang at line 599.
 	if [ -f "$minidump" ] &&
-	   grep -qE '^subsys_initcall\(msm_minidump_init\);?[[:space:]]*$' "$minidump"; then
-		if ! grep -qF '#include <linux/module.h>' "$minidump"; then
-			sed -i '/#include <linux\/init.h>/a#include <linux/module.h>' "$minidump"
-		fi
-		sed -i -E 's/^subsys_initcall\(msm_minidump_init\);?[[:space:]]*$/module_init(msm_minidump_init);/' "$minidump"
-		ok "made drivers/soc/qcom/msm_minidump.c initcall module-compatible"
+	   grep -qE '^subsys_initcall\(msm_minidump_init\)[[:space:]]*$' "$minidump"; then
+		sed -i -E 's/^(subsys_initcall\(msm_minidump_init\))[[:space:]]*$/\1;/' "$minidump"
+		ok "fixed missing semicolon in drivers/soc/qcom/msm_minidump.c"
 		fixed=1
 	fi
 

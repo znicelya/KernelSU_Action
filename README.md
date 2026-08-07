@@ -116,6 +116,7 @@ AOSP 的 clang 预编译仓库有个陷阱：每个 `kernel-build` 分支都会�
 | 选项 | 说明 |
 | --- | --- |
 | `KERNEL_IMAGE_NAME` | 需要刷写的内核二进制名，与设备树里的 `BOARD_KERNEL_IMAGE_NAME` 一致，常见 `Image.gz-dtb` / `Image.gz` / `Image` |
+| `KERNEL_CONFIG_ALLYES_FRAGMENTS` | 合并前将指定配置片段中的 `=m` 转为 `=y`，用于 Xiaomi QGKI 等要求 GKI 驱动内建的源码树 |
 | `EXTRA_CMDS` / `CUSTOM_CMDS` | 追加到每次 `make` 的参数，值里可以带 `=` |
 | `USE_LLVM` | 全 LLVM 构建（`LLVM=1 LLVM_IAS=1`），适合 5.10+ |
 | `ADD_OVERLAYFS_CONFIG` | 为 KernelSU 模块与 system 读写提供支持 |
